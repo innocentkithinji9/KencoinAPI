@@ -189,6 +189,8 @@ class MpesaDeposit(Resource):
         print(rawpass)
         base64Pass = base64.b64encode(rawpass.encode())
         passwd = base64Pass.decode()
+        phone = "254" + data['phoneNumber'][1:]
+        print(phone)
         stk_api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
         headers = {"Authorization": "Bearer %s" % self.access_token}
         request = {
@@ -197,17 +199,56 @@ class MpesaDeposit(Resource):
             "Timestamp": finishedtime,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": data['amount'],
-            "PartyA": data['phoneNumber'],
+            "PartyA": phone,
             "PartyB": "174379",
-            "PhoneNumber": data['phoneNumber'],
-            "CallBackURL": "https://innocent.me/mpesa",
+            "PhoneNumber": phone,
+            "CallBackURL": "https://89eade11.ngrok.io/coin/confirm",
             "AccountReference": data['account'],
             "TransactionDesc": "Simple Test"
         }
 
         response = requests.post(stk_api_url, json=request, headers=headers)
+        final_response = response.json()
 
-        return response.json()
+        if final_response['CheckoutRequestID']:
+            print("Here")
+            return {"recieved": True, "ID": final_response['CheckoutRequestID']}
+        else:
+            return {"Error": True}
+
+
+@coinNS.route("/confirm")
+class MpesaConfirm(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.auth_URL = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+        r = requests.get(self.auth_URL, auth=HTTPBasicAuth(keys.consumer_key, keys.consumer_secret))
+        response = r.json()
+        self.access_token = response['access_token']
+        print(self.access_token)
+
+    def post(self):
+        data = ast.literal_eval(flask.request.data.decode())
+        print("data confirmed")
+        print(data["ID"])
+        rawtime = datetime.now()
+        finishedtime = rawtime.strftime("%Y%m%d%H%M%S")
+        rawpass = "{}{}{}".format(keys.business_short_code, keys.passKey, finishedtime)
+        print(rawpass)
+        base64Pass = base64.b64encode(rawpass.encode())
+        passwd = base64Pass.decode()
+        stk_api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query"
+        headers = {"Authorization": "Bearer %s" % self.access_token}
+        request = {
+            "BusinessShortCode": keys.business_short_code,
+            "Password": passwd,
+            "Timestamp": finishedtime,
+            "CheckoutRequestID": data["ID"]
+        }
+        print(request)
+        response = requests.post(stk_api_url, json=request, headers=headers)
+        print(response.json())
+        return "success"
 
 
 userNS = api.namespace("user", description="All about users")
@@ -249,7 +290,7 @@ class User(Resource):
             usrAddr = self.web3.toChecksumAddress(userDetails['address'])
             print(usrAddr)
             balance = getBalance(usrAddr)
-            userDetails['balance'] = balance
+            userDetails['balance'] = balance[0]
             return userDetails
         else:
             return {"new_User": True}
