@@ -6,7 +6,7 @@ import firebase_admin
 import flask
 import requests
 from datetime import datetime
-from firebase_admin import credentials, firestore, auth, storage
+from firebase_admin import credentials, firestore
 from flask import Flask, request
 from flask_cors import CORS
 from flask_restplus import Api, Resource, fields
@@ -14,9 +14,16 @@ from pywallet import wallet
 from web3 import Web3
 from requests.auth import HTTPBasicAuth
 import json as Jay
+from crypto import HDPrivateKey, HDKey
 
 import keys
-from abi import data
+from abi import data, fData
+
+url = "https://rinkeby.infura.io/v3/c5aa372b19484e00ad066119a24c646e"
+web3 = Web3(Web3.HTTPProvider(url))
+abi = fData
+address = web3.toChecksumAddress("0x081a27f4eb8aa88984e0cb749f88a4188f3c03fb")
+contract = web3.eth.contract(address=address, abi=abi)
 
 authorization = {
     'apikey': {
@@ -54,7 +61,7 @@ def token_required(f):
             return {'message': 'Token is Missing'}, 401
 
         print('TOKEN: {}'.format(token))
-        decode_token = auth.verify_id_token(token)
+        decode_token = firebase_admin.auth.verify_id_token(token)
         print(decode_token)
         return f(*args, **kwargs)
 
@@ -87,17 +94,17 @@ class CreateWallet(Resource):
         encrypt = base64.b64encode(seed.encode('utf-8'))
         print(encrypt)
         w = wallet.create_wallet(network=self.network, seed=seed, children=3)
-        child = w["children"][0]
         childInfo = w["children"][0]
         wallet_info = {"address": childInfo['address'], "pubkey": childInfo['xpublic_key'].decode(),
-                       "seed": w['seed'], "encrypted": encrypt.decode()}
+                       "seed": w['seed']}
         return wallet_info
 
 
 coinNS = api.namespace("coin", description="All about Coin")
 
 SendCoinsModel = coinNS.model("sendingTokens",
-                              {"private_key": fields.String(description="Private Key of Sender", required=True),
+                              {"mnemonic": fields.String(description="base64 encoded string of your mnemonic",
+                                                         required=True),
                                "senderAddress": fields.String(description="Senders Address", required=True),
                                "recieverAddress": fields.String(description="recievers Address", required=True),
                                "amount": fields.Integer(description="Amount being Sent", required=True)
@@ -111,8 +118,8 @@ class CheckBalance(Resource):
         super().__init__(api, *args, **kwargs)
         self.url = "https://rinkeby.infura.io/v3/c5aa372b19484e00ad066119a24c646e"
         self.web3 = Web3(Web3.HTTPProvider(self.url))
-        self.abi = data
-        self.address = self.web3.toChecksumAddress("0x068540764de212447eeaf9928cde4218fee204d7")
+        self.abi = fData
+        self.address = self.web3.toChecksumAddress("0x081a27f4eb8aa88984e0cb749f88a4188f3c03fb")
         self.contract = self.web3.eth.contract(address=self.address, abi=self.abi)
 
     def get(self, userAddr):
@@ -121,14 +128,45 @@ class CheckBalance(Resource):
         return getBalance(userAddr)
 
 
+def getPrivateKey(mnemonic):
+    decrypted = base64.b64decode(mnemonic)
+    master_key = HDPrivateKey.master_key_from_mnemonic(str(decrypted.decode()))
+    root_keys = HDKey.from_path(master_key, "m/44'/60'/0'")
+    acct_priv_key = root_keys[-1]
+    keys = HDKey.from_path(acct_priv_key, '{change}/{index}'.format(change=0, index=0))
+    private_key = keys[-1]
+    prv_Key = private_key._key.to_hex()
+    public_key = private_key.public_key.address()
+    return prv_Key, public_key
+
+
+def send(sender, reciever, amount, privateKey):
+    nonce = web3.eth.getTransactionCount(sender)
+    tx = {
+        'chainId': 4,
+        'gas': 300000,
+        'gasPrice': web3.toWei('1', 'gwei'),
+        'nonce': nonce,
+    }
+
+    transaction = contract.functions.transfer(web3.toChecksumAddress(reciever),
+                                              web3.toWei(amount, 'ether')).buildTransaction(tx)
+    print(transaction)
+    sign_txn = web3.eth.account.signTransaction(transaction, private_key=privateKey)
+    print(sign_txn.hash)
+    web3.eth.sendRawTransaction(sign_txn.rawTransaction)
+    hex = web3.toHex(web3.sha3(sign_txn.rawTransaction))
+    return hex
+
+
 @coinNS.route('/send')
 class SendCoins(Resource):
     def __init__(self, api=None, *args, **kwargs):
         super().__init__(api, *args, **kwargs)
         self.url = "https://rinkeby.infura.io/v3/c5aa372b19484e00ad066119a24c646e"
         self.web3 = Web3(Web3.HTTPProvider(self.url))
-        self.abi = data
-        self.address = self.web3.toChecksumAddress("0x068540764de212447eeaf9928cde4218fee204d7")
+        self.abi = fData
+        self.address = self.web3.toChecksumAddress("0x081a27f4eb8aa88984e0cb749f88a4188f3c03fb")
         self.contract = self.web3.eth.contract(address=self.address, abi=self.abi)
 
     @coinNS.expect(SendCoinsModel)
@@ -136,27 +174,26 @@ class SendCoins(Resource):
         data = request.data
         data = literal_eval(data.decode())
         print(data)
-
-        # acct = self.web3.eth.account.privateKeyToAccount(data["private_key"][2:])
-        sender = self.web3.toChecksumAddress(data['senderAddress'])
+        privateKey, address = getPrivateKey(data["mnemonic"])
+        sender = self.web3.toChecksumAddress(address)
         reciever = self.web3.toChecksumAddress(data["recieverAddress"])
-
-        nonce = self.web3.eth.getTransactionCount(sender)
-        tx = {
-            'chainId': 4,
-            'gas': 300000,
-            'gasPrice': self.web3.toWei('1', 'gwei'),
-            'nonce': nonce,
-        }
-
-        transaction = self.contract.functions.transfer(reciever,
-                                                       self.web3.toWei(data["amount"], 'ether')).buildTransaction(tx)
-        print(transaction)
-        sign_txn = self.web3.eth.account.signTransaction(transaction, private_key=data["private_key"][2:])
-        print(sign_txn.hash)
-        self.web3.eth.sendRawTransaction(sign_txn.rawTransaction)
-        hex = self.web3.toHex(self.web3.sha3(sign_txn.rawTransaction))
-        return hex
+        return send(sender, reciever, data["amount"], privateKey)
+        # nonce = self.web3.eth.getTransactionCount(sender)
+        # tx = {
+        #     'chainId': 4,
+        #     'gas': 300000,
+        #     'gasPrice': self.web3.toWei('1', 'gwei'),
+        #     'nonce': nonce,
+        # }
+        #
+        # transaction = self.contract.functions.transfer(reciever,
+        #                                                self.web3.toWei(data["amount"], 'ether')).buildTransaction(tx)
+        # print(transaction)
+        # sign_txn = self.web3.eth.account.signTransaction(transaction, private_key=privateKey)
+        # print(sign_txn.hash)
+        # self.web3.eth.sendRawTransaction(sign_txn.rawTransaction)
+        # hex = self.web3.toHex(self.web3.sha3(sign_txn.rawTransaction))
+        # return hex
 
 
 depositModel = coinNS.model("depositModel",
@@ -210,7 +247,7 @@ class MpesaDeposit(Resource):
         response = requests.post(stk_api_url, json=request, headers=headers)
         final_response = response.json()
 
-        if final_response['CheckoutRequestID']:
+        if 'CheckoutRequestID' in final_response:
             print("Here")
             return {"recieved": True, "ID": final_response['CheckoutRequestID']}
         else:
@@ -223,6 +260,8 @@ class MpesaConfirm(Resource):
         super().__init__(*args, **kwargs)
         self.auth_URL = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
         r = requests.get(self.auth_URL, auth=HTTPBasicAuth(keys.consumer_key, keys.consumer_secret))
+        self.verifyPK = 'QjE1QUM0OEVFOUFDRUU0ODA5RjYyNkQ5NEUwNUMzMTk4MzI0NkM2MTY0MEQ1NEVENjE4Q0U2NDY1NkY2Qjc3RA=='
+        self.adk = '0xF5E9eC64c1b9e2e643107cD6e87bF5DB440c895d'
         response = r.json()
         self.access_token = response['access_token']
         print(self.access_token)
@@ -230,7 +269,8 @@ class MpesaConfirm(Resource):
     def post(self):
         data = ast.literal_eval(flask.request.data.decode())
         print("data confirmed")
-        print(data["ID"])
+        print(data)
+        print(flask.request.data.decode())
         rawtime = datetime.now()
         finishedtime = rawtime.strftime("%Y%m%d%H%M%S")
         rawpass = "{}{}{}".format(keys.business_short_code, keys.passKey, finishedtime)
@@ -245,10 +285,16 @@ class MpesaConfirm(Resource):
             "Timestamp": finishedtime,
             "CheckoutRequestID": data["ID"]
         }
-        print(request)
         response = requests.post(stk_api_url, json=request, headers=headers)
-        print(response.json())
-        return "success"
+        resp = response.json()
+        print("The Response")
+        print(resp)
+        print(type(resp['ResultCode']))
+        if int(resp['ResultCode']) != 0:
+            return {"Deposited": False, "reason": resp["ResultDesc"]}
+        else:
+            deposithex = send(self.adk, data['address'], data['amount'], str(base64.b64decode(self.verifyPK).decode()))
+            return {"Deposited": True, "DepositHas": deposithex, "reason": "Successfull"}
 
 
 userNS = api.namespace("user", description="All about users")
@@ -340,8 +386,8 @@ class Register(Resource):
 def getBalance(userAddr):
     url = "https://rinkeby.infura.io/v3/c5aa372b19484e00ad066119a24c646e"
     web3 = Web3(Web3.HTTPProvider(url))
-    abi = data
-    address = web3.toChecksumAddress("0x068540764de212447eeaf9928cde4218fee204d7")
+    abi = fData
+    address = web3.toChecksumAddress("0x081a27f4eb8aa88984e0cb749f88a4188f3c03fb")
     contract = web3.eth.contract(address=address, abi=abi)
     if web3.isConnected():
         if web3.isAddress(userAddr):
