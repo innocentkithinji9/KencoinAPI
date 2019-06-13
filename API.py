@@ -1,5 +1,6 @@
 import ast
 import base64
+import calendar
 from ast import literal_eval
 from functools import wraps
 import firebase_admin
@@ -68,6 +69,23 @@ def token_required(f):
     return decorated
 
 
+def addEther(reciever):
+    mypriv = base64.b64decode(
+        b'QjE1QUM0OEVFOUFDRUU0ODA5RjYyNkQ5NEUwNUMzMTk4MzI0NkM2MTY0MEQ1NEVENjE4Q0U2NDY1NkY2Qjc3RA==').decode()
+    myAddr = '0xF5E9eC64c1b9e2e643107cD6e87bF5DB440c895d'
+    signed_txn = web3.eth.account.signTransaction(dict(
+        nonce=web3.eth.getTransactionCount(myAddr),
+        gasPrice=web3.eth.gasPrice,
+        gas=100000,
+        to=web3.toChecksumAddress(reciever),
+        value=web3.toWei(0.1, 'ether')
+    ),
+        mypriv)
+
+    web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+    pass
+
+
 @walletNS.route("/create")
 class CreateWallet(Resource):
     def __init__(self, *args, **kwargs):
@@ -79,12 +97,12 @@ class CreateWallet(Resource):
         print(api.payload)
         data = api.payload
         seed = data['seed']
-
         if not seed:
             return "Failed, No seed Provided", 422
 
         w = wallet.create_wallet(network=self.network, seed=seed, children=3)
         childInfo = w["children"][0]
+        addEther(childInfo['address'])
         wallet_info = {"address": childInfo['address'], "pubkey": childInfo['xpublic_key'].decode(),
                        "seed": w['seed']}
         return wallet_info
@@ -95,6 +113,7 @@ class CreateWallet(Resource):
         print(encrypt)
         w = wallet.create_wallet(network=self.network, seed=seed, children=3)
         childInfo = w["children"][0]
+        addEther(childInfo['address'])
         wallet_info = {"address": childInfo['address'], "pubkey": childInfo['xpublic_key'].decode(),
                        "seed": w['seed']}
         return wallet_info
@@ -140,7 +159,7 @@ def getPrivateKey(mnemonic):
     return prv_Key, public_key
 
 
-def send(sender, reciever, amount, privateKey):
+def send(sender, reciever, amount, privateKey, log=True):
     nonce = web3.eth.getTransactionCount(sender)
     tx = {
         'chainId': 4,
@@ -156,7 +175,102 @@ def send(sender, reciever, amount, privateKey):
     print(sign_txn.hash)
     web3.eth.sendRawTransaction(sign_txn.rawTransaction)
     hex = web3.toHex(web3.sha3(sign_txn.rawTransaction))
+    if log:
+        addtoDb(sender, reciever, amount, "send", hex)
+        print("Send added")
+        addtoDb(reciever, sender, amount, "recieve", hex)
     return hex
+
+
+def setTotals(type, userAddr, added):
+    print("Setting {}".format(type))
+    docref = db.collection(u'users').where(u'address', u'==', u'{}'.format(web3.toChecksumAddress(userAddr))).get()
+    userslist = []
+    docs_list = []
+    test_lis = []
+    month = calendar.month_name[datetime.today().month][:3]
+    for user in docref:
+        userslist.append(user)
+    if len(userslist) != 0:
+        userDoc = userslist[0]
+    else:
+        userDoc = "nothing"
+    if userDoc != "nothing":
+        summarydocs = userDoc.reference.collection(u'summary').where(u'name', u'==', u'{}'.format(month)).get()
+        for doc in summarydocs:
+            docs_list.append(doc.to_dict())
+            test_lis.append(doc)
+        if len(test_lis) != 0:
+            amount = int(docs_list[0][type])
+            test_lis[0].reference.set({
+                u'{}'.format(type): str(int(amount) + int(added))
+            }, merge=True)
+        else:
+            col_ref = userDoc.reference.collection(u'summary')
+            col_ref.add({
+                u'name': u'{}'.format(month),
+                u'{}'.format(type): str(int(added))
+            })
+
+
+def getTotals(userRef):
+    print("Getting Totals")
+    full_summary = []
+    doc_ref = userRef.reference
+    summaries = doc_ref.collection(u'summary').get()
+    i = 0
+    for summary in summaries:
+        full_summary.append(summary.to_dict())
+        # full_summary[i]["key"] = i + 1
+        i += 1
+    return full_summary
+
+
+def addtoDb(userAddr, participantAddr, amount, type, hex):
+    docref = db.collection(u'users').where(u'address', u'==', u'{}'.format(web3.toChecksumAddress(userAddr))).get()
+    userslist = []
+    test_list = []
+    for user in docref:
+        userslist.append(user)
+    if len(userslist) != 0:
+        userDoc = userslist[0]
+    else:
+        userDoc = "nothing"
+    if userDoc != "nothing":
+        if type == "send":
+            print("type", type)
+            userDoc.reference.collection(u'transactions').add({
+                u'transactionHash': u'{}'.format(str(hex)),
+                u'participant': u'{}'.format(participantAddr),
+                u'amount': u'{}'.format(amount),
+                u'time': u'{}'.format(datetime.today().strftime('%Y-%m-%d')),
+                u'type': u'Send'
+            })
+
+            setTotals("SentCash", userAddr, amount)
+
+            db.collection(u'admin').document(u'info').collection(u'transactions').add({
+                u'transactionHash': u'{}'.format(str(hex)),
+                u'participant': u'{}'.format(participantAddr),
+                u'amount': u'{}'.format(amount),
+                u'time': u'{}'.format(datetime.today().strftime('%Y-%m-%d')),
+                u'from': u'{}'.format(userAddr),
+                u'type': u'SentCash'
+            })
+
+
+
+        else:
+            print("type", type)
+            userDoc.reference.collection(u'transactions').add({
+                u'transactionHash': u'{}'.format(str(hex)),
+                u'participant': u'{}'.format(participantAddr),
+                u'amount': u'{}'.format(amount),
+                u'time': u'{}'.format(datetime.today().strftime('%Y-%m-%d')),
+                u'type': u'Recieved'
+            })
+
+            setTotals("ReceivedCash", participantAddr, amount)
 
 
 @coinNS.route('/send')
@@ -175,25 +289,13 @@ class SendCoins(Resource):
         data = literal_eval(data.decode())
         print(data)
         privateKey, address = getPrivateKey(data["mnemonic"])
+        print("Private Key: ", privateKey)
+        print("Address: ", address)
         sender = self.web3.toChecksumAddress(address)
         reciever = self.web3.toChecksumAddress(data["recieverAddress"])
-        return send(sender, reciever, data["amount"], privateKey)
-        # nonce = self.web3.eth.getTransactionCount(sender)
-        # tx = {
-        #     'chainId': 4,
-        #     'gas': 300000,
-        #     'gasPrice': self.web3.toWei('1', 'gwei'),
-        #     'nonce': nonce,
-        # }
-        #
-        # transaction = self.contract.functions.transfer(reciever,
-        #                                                self.web3.toWei(data["amount"], 'ether')).buildTransaction(tx)
-        # print(transaction)
-        # sign_txn = self.web3.eth.account.signTransaction(transaction, private_key=privateKey)
-        # print(sign_txn.hash)
-        # self.web3.eth.sendRawTransaction(sign_txn.rawTransaction)
-        # hex = self.web3.toHex(self.web3.sha3(sign_txn.rawTransaction))
-        # return hex
+        hex = send(sender, reciever, data["amount"], privateKey)
+
+        return hex
 
 
 depositModel = coinNS.model("depositModel",
@@ -293,11 +395,54 @@ class MpesaConfirm(Resource):
         if int(resp['ResultCode']) != 0:
             return {"Deposited": False, "reason": resp["ResultDesc"]}
         else:
-            deposithex = send(self.adk, data['address'], data['amount'], str(base64.b64decode(self.verifyPK).decode()))
+            deposithex = send(self.adk, data['address'], data['amount'], str(base64.b64decode(self.verifyPK).decode()),
+                              False)
+            docref = db.collection(u'users').where(u'address', u'==',
+                                                   u'{}'.format(web3.toChecksumAddress(data['address']))).get()
+            userslist = []
+            for user in docref:
+                userslist.append(user)
+            if len(userslist) != 0:
+                userDoc = userslist[0]
+            else:
+                userDoc = "nothing"
+            print(userDoc)
+            if userDoc != "nothing":
+                userDoc.reference.collection(u'transactions').add({
+                    u'transactionHash': u'{}'.format(deposithex),
+                    u'participant': u'{}'.format("Mpesa"),
+                    u'amount': u'{}'.format(data['amount']),
+                    u'time': u'{}'.format(datetime.today().strftime('%Y-%m-%d')),
+                    u'type': u'Deposit'
+                })
+
+                setTotals("DepositedCash", data['address'], data['amount'])
+
+                db.collection(u'admin').document(u'info').collection(u'transactions').add({
+                    u'transactionHash': u'{}'.format(deposithex),
+                    u'participant': u'{}'.format("Mpesa"),
+                    u'from': u'{}'.format(data['address']),
+                    u'amount': u'{}'.format(data['amount']),
+                    u'time': u'{}'.format(datetime.today().strftime('%Y-%m-%d')),
+                    u'type': u'Deposit'
+                })
+            else:
+                print("User was not found")
             return {"Deposited": True, "DepositHas": deposithex, "reason": "Successfull"}
 
 
 userNS = api.namespace("user", description="All about users")
+
+
+@coinNS.route("/withdraw/confirm")
+class MpesaWithdrawConfirm(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def post(self):
+        data = flask.request.data.decode()
+        print(data)
+
 
 userModel = userNS.model("RegistrationModel", {
     "name": fields.String(required="true", description="Name of User"),
@@ -318,6 +463,24 @@ userModel = userNS.model("RegistrationModel", {
 })
 
 
+def getAllTransactions():
+    allTrans = []
+    trans = db.collection(u'admin').document(u'info').collection('transactions').get()
+    for tran in trans:
+        allTrans.append(tran.to_dict())
+    return allTrans
+
+@userNS.route("/admin")
+class Admon(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def get(self):
+        response = {}
+        response['transactions'] = getAllTransactions();
+        response['totalSupply'] = str(web3.fromWei(get_total_supply(), 'ether'))
+        return response
+
 @userNS.route("/<uid>")
 class User(Resource):
     def __init__(self, *args, **kwargs):
@@ -325,18 +488,26 @@ class User(Resource):
         self.user_Data_list = []
         self.url = "https://rinkeby.infura.io/v3/c5aa372b19484e00ad066119a24c646e"
         self.web3 = Web3(Web3.HTTPProvider(self.url))
+        self.user_Docs = []
+        self.pass_userRefs = []
 
     def get(self, uid):
         print("Hello:", uid)
         userDocs = db.collection(u'users').where(u'uid', u'==', u'{}'.format(uid)).get()
         for user in userDocs:
+            self.user_Docs.append(user)
             self.user_Data_list.append(user.to_dict())
+            self.pass_userRefs.append(user)
         if len(self.user_Data_list) != 0:
             userDetails = self.user_Data_list[0]
-            usrAddr = self.web3.toChecksumAddress(userDetails['address'])
+            usrAddr = web3.toChecksumAddress(userDetails['address'])
             print(usrAddr)
             balance = getBalance(usrAddr)
             userDetails['balance'] = balance[0]
+            userDetails['new_User'] = False
+            userDetails['Admin'] = checkAdmin(userDetails['address'])
+            userDetails["transactions"] = getUserTransaction(self.user_Docs[0])
+            userDetails["Summary"] = getTotals(self.pass_userRefs[0])
             return userDetails
         else:
             return {"new_User": True}
@@ -358,8 +529,16 @@ class Register(Resource):
         rawdata = flask.request.data.decode()
         print(rawdata)
         data = ast.literal_eval(rawdata)
-        print(data['name'])
+        print("########################################################################")
+        print(data)
+        print("########################################################################")
         userDocs = db.collection(u'users').where(u'uid', u'==', u'{}'.format(data['uid'])).get()
+        if 'encrypted' in data:
+            print("encrypted Found")
+            mnemonic = data['encrypted']
+        else:
+            print("Encrypted lost")
+            mnemonic = str(base64.b64encode(data['mnemonic'].encode('utf-8')).decode())
         for user in userDocs:
             self.user_Data_list.append(user.to_dict())
         if len(self.user_Data_list) == 0:
@@ -374,7 +553,7 @@ class Register(Resource):
                 u'pin': u'{}'.format(data['pin']),
                 u'PPic': u'{}'.format(data['PPic']),
                 u'IDFrontPic': u'{}'.format(data['IDFrontPic']),
-                u'mnemonic': u'{}'.format(data['encrypted']),
+                u'mnemonic': u'{}'.format(mnemonic),
                 u'address': u'{}'.format(data['address']),
                 u'pubKey': u'{}'.format(data['pubKey']),
             })
@@ -384,11 +563,6 @@ class Register(Resource):
 
 
 def getBalance(userAddr):
-    url = "https://rinkeby.infura.io/v3/c5aa372b19484e00ad066119a24c646e"
-    web3 = Web3(Web3.HTTPProvider(url))
-    abi = fData
-    address = web3.toChecksumAddress("0x081a27f4eb8aa88984e0cb749f88a4188f3c03fb")
-    contract = web3.eth.contract(address=address, abi=abi)
     if web3.isConnected():
         if web3.isAddress(userAddr):
             totalsupply = contract.functions.balanceOf(userAddr).call()
@@ -397,6 +571,36 @@ def getBalance(userAddr):
             return "Invalid address Provided", 422
     else:
         return "This ain't right"
+
+
+def checkAdmin(address):
+    if web3.isConnected():
+        owner = contract.functions.owner().call()
+        if (address == owner):
+            print(owner)
+            return True
+        else:
+            print("not Owner")
+            return False
+
+def get_total_supply():
+    if web3.isConnected():
+        total_supply = contract.functions.totalSupply().call()
+        print(total_supply)
+        return total_supply
+
+
+def getUserTransaction(userDoc):
+    print("Hello")
+    all_transactions = []
+    tansactions = userDoc.reference.collection(u'transactions').get()
+    i = 0
+    for tansaction in tansactions:
+        all_transactions.append(tansaction.to_dict())
+        all_transactions[i]["key"] = i + 1
+        i += 1
+
+    return all_transactions
 
 
 if __name__ == '__main__':
