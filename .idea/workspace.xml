@@ -4,7 +4,7 @@
     <list default="true" id="189992b8-3dce-4aed-9fd0-412f52013114" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/API.py" beforeDir="false" afterPath="$PROJECT_DIR$/API.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/keys.py" beforeDir="false" afterPath="$PROJECT_DIR$/keys.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/final_contract.sol" beforeDir="false" afterPath="$PROJECT_DIR$/final_contract.sol" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -14,14 +14,23 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/API.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="476" lean-forward="true" selection-start-line="476" selection-end-line="476" />
+            <state relative-caret-position="242">
+              <caret line="372" selection-start-line="372" selection-end-line="372" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/final_contract.sol">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="264">
+              <caret line="324" lean-forward="true" selection-start-line="324" selection-end-line="324" />
             </state>
           </provider>
         </entry>
@@ -94,27 +103,19 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>chhecks</find>
-      <find>encrypted</find>
-      <find>data</find>
-      <find>.where</find>
       <find>u'addre</find>
       <find>u'address</find>
       <find>.add</find>
       <find>.add({</find>
       <find>client</find>
       <find>add({</find>
-      <find>send(</find>
       <find>: u'</find>
       <find>confirm</find>
       <find>u'transaction</find>
       <find>format(hex)</find>
       <find>hex</find>
-      <find>send</find>
-      <find>addtoDb</find>
       <find>getTotals</find>
       <find>to_Dict</find>
-      <find>/confirm</find>
       <find>&lt;u</find>
       <find>&lt;uid</find>
       <find>atetime.today</find>
@@ -124,6 +125,14 @@
       <find>setTotals(&quot;re</find>
       <find>setTotals(&quot;</find>
       <find>checkAdmin</find>
+      <find>totalS</find>
+      <find>print(type</find>
+      <find>send</find>
+      <find>send(</find>
+      <find>addtoDb</find>
+      <find>register</find>
+      <find>deposit</find>
+      <find>/confirm</find>
     </findStrings>
     <replaceStrings>
       <replace>self.web3</replace>
@@ -144,11 +153,11 @@
         <option value="$PROJECT_DIR$/abi.json" />
         <option value="$PROJECT_DIR$/coin Contract.sol" />
         <option value="$PROJECT_DIR$/webTest.py" />
-        <option value="$PROJECT_DIR$/final_contract.sol" />
         <option value="$PROJECT_DIR$/abi.py" />
         <option value="$PROJECT_DIR$/crypto.py" />
         <option value="$PROJECT_DIR$/final_abi.json" />
         <option value="$PROJECT_DIR$/keys.py" />
+        <option value="$PROJECT_DIR$/final_contract.sol" />
         <option value="$PROJECT_DIR$/API.py" />
       </list>
     </option>
@@ -165,23 +174,23 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope">
-        <subPane subId="Scope 'Project Files'; set:Project Files; class com.intellij.psi.search.scope.ProjectFilesScope">
-          <expand>
-            <path>
-              <item name="ProjectAPI" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
-              <item name="~/PycharmProjects/ProjectAPI" type="442cc68d:ScopeViewTreeModel$RootNode" />
-            </path>
-          </expand>
-          <select />
-        </subPane>
-      </pane>
       <pane id="ProjectPane">
         <subPane>
           <expand>
             <path>
               <item name="ProjectAPI" type="b2602c69:ProjectViewProjectNode" />
               <item name="ProjectAPI" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope">
+        <subPane subId="Scope 'Project Files'; set:Project Files; class com.intellij.psi.search.scope.ProjectFilesScope">
+          <expand>
+            <path>
+              <item name="ProjectAPI" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
+              <item name="~/PycharmProjects/ProjectAPI" type="442cc68d:ScopeViewTreeModel$RootNode" />
             </path>
           </expand>
           <select />
@@ -349,12 +358,13 @@
       <workItem from="1560240116834" duration="17560000" />
       <workItem from="1560288917737" duration="1434000" />
       <workItem from="1560335451414" duration="35259000" />
-      <workItem from="1560379770376" duration="8640000" />
+      <workItem from="1560379770376" duration="16919000" />
+      <workItem from="1560765585655" duration="1998000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="144164000" />
+    <option name="totallyTimeSpent" value="154441000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -366,15 +376,14 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="25" width="1914" height="868" extended-state="6" />
-    <editor active="true" />
+    <frame x="0" y="25" width="1918" height="872" extended-state="6" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4994363" visible="true" weight="0.23608138" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4994363" visible="true" weight="0.12873931" />
       <window_info id="Structure" order="1" sideWeight="0.5005637" side_tool="true" weight="0.19103523" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32881355" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.38159674" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.29039547" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -383,8 +392,8 @@
       <window_info anchor="bottom" id="Version Control" order="8" weight="0.32882273" />
       <window_info anchor="bottom" id="Database Changes" order="9" />
       <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
-      <window_info anchor="bottom" id="Terminal" order="11" weight="0.32655367" />
-      <window_info anchor="bottom" id="Python Console" order="12" weight="0.32655367" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="11" visible="true" weight="0.3257066" />
+      <window_info anchor="bottom" id="Python Console" order="12" weight="0.3257066" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.2497332" />
@@ -398,7 +407,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ProjectAPI$web3.coverage" NAME="web3 Coverage Results" MODIFIED="1556653711201" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ProjectAPI$webTest.coverage" NAME="webTest Coverage Results" MODIFIED="1557511728891" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ProjectAPI$API.coverage" NAME="API Coverage Results" MODIFIED="1560387763704" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ProjectAPI$API.coverage" NAME="API Coverage Results" MODIFIED="1560458079555" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ProjectAPI$abi.coverage" NAME="abi Coverage Results" MODIFIED="1556651849620" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="editorHistoryManager">
@@ -427,13 +436,6 @@
     <entry file="file://$PROJECT_DIR$/venv/lib/python3.6/site-packages/firebase_admin/auth.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/final_contract.sol">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="326">
-          <caret line="332" column="51" selection-start-line="332" selection-start-column="12" selection-end-line="332" selection-end-column="54" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/crypto.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="331">
@@ -458,10 +460,17 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/venv/lib/python3.6/site-packages/flask/app.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="192">
+          <caret line="1812" selection-start-line="1812" selection-end-line="1812" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/API.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="476" lean-forward="true" selection-start-line="476" selection-end-line="476" />
+        <state relative-caret-position="242">
+          <caret line="372" selection-start-line="372" selection-end-line="372" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
@@ -510,6 +519,13 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="3750">
           <caret line="250" selection-start-line="250" selection-end-line="250" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/final_contract.sol">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="264">
+          <caret line="324" lean-forward="true" selection-start-line="324" selection-end-line="324" />
         </state>
       </provider>
     </entry>

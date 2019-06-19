@@ -175,10 +175,31 @@ def send(sender, reciever, amount, privateKey, log=True):
     print(sign_txn.hash)
     web3.eth.sendRawTransaction(sign_txn.rawTransaction)
     hex = web3.toHex(web3.sha3(sign_txn.rawTransaction))
-    if log:
-        addtoDb(sender, reciever, amount, "send", hex)
-        print("Send added")
-        addtoDb(reciever, sender, amount, "recieve", hex)
+    addtoDb(sender, reciever, amount, "send", hex)
+    print("Send added")
+    addtoDb(reciever, sender, amount, "recieve", hex)
+    return hex
+
+
+def deposit(sender, reciever, amount, privateKey):
+    nonce = web3.eth.getTransactionCount(sender)
+    tx = {
+        'chainId': 4,
+        'gas': 300000,
+        'gasPrice': web3.toWei('1', 'gwei'),
+        'nonce': nonce,
+    }
+
+    transaction = contract.functions.deposit(web3.toWei(amount, 'ether'),
+                                             web3.toChecksumAddress(reciever)).buildTransaction(tx)
+    print(transaction)
+    sign_txn = web3.eth.account.signTransaction(transaction, private_key=privateKey)
+    print(sign_txn.hash)
+    web3.eth.sendRawTransaction(sign_txn.rawTransaction)
+    hex = web3.toHex(web3.sha3(sign_txn.rawTransaction))
+    addtoDb(sender, reciever, amount, "send", hex)
+    print("Send added")
+    addtoDb(reciever, sender, amount, "recieve", hex)
     return hex
 
 
@@ -196,6 +217,7 @@ def setTotals(type, userAddr, added):
     else:
         userDoc = "nothing"
     if userDoc != "nothing":
+        print("foundUser")
         summarydocs = userDoc.reference.collection(u'summary').where(u'name', u'==', u'{}'.format(month)).get()
         for doc in summarydocs:
             docs_list.append(doc.to_dict())
@@ -395,8 +417,8 @@ class MpesaConfirm(Resource):
         if int(resp['ResultCode']) != 0:
             return {"Deposited": False, "reason": resp["ResultDesc"]}
         else:
-            deposithex = send(self.adk, data['address'], data['amount'], str(base64.b64decode(self.verifyPK).decode()),
-                              False)
+            deposithex = deposit(self.adk, data['address'], data['amount'],
+                                  str(base64.b64decode(self.verifyPK).decode()))
             docref = db.collection(u'users').where(u'address', u'==',
                                                    u'{}'.format(web3.toChecksumAddress(data['address']))).get()
             userslist = []
@@ -470,6 +492,7 @@ def getAllTransactions():
         allTrans.append(tran.to_dict())
     return allTrans
 
+
 @userNS.route("/admin")
 class Admon(Resource):
     def __init__(self, *args, **kwargs):
@@ -477,9 +500,10 @@ class Admon(Resource):
 
     def get(self):
         response = {}
-        response['transactions'] = getAllTransactions();
+        response['transactions'] = getAllTransactions()
         response['totalSupply'] = str(web3.fromWei(get_total_supply(), 'ether'))
         return response
+
 
 @userNS.route("/<uid>")
 class User(Resource):
@@ -554,7 +578,7 @@ class Register(Resource):
                 u'PPic': u'{}'.format(data['PPic']),
                 u'IDFrontPic': u'{}'.format(data['IDFrontPic']),
                 u'mnemonic': u'{}'.format(mnemonic),
-                u'address': u'{}'.format(data['address']),
+                u'address': u'{}'.format(web3.toChecksumAddress(data['address'])),
                 u'pubKey': u'{}'.format(data['pubKey']),
             })
             return "Successful"
@@ -582,6 +606,7 @@ def checkAdmin(address):
         else:
             print("not Owner")
             return False
+
 
 def get_total_supply():
     if web3.isConnected():
